@@ -1,0 +1,8 @@
+VpcCidr: 10.165.0.0/16
+PublicSubnetCidrBlock1: 10.165.1.0/24
+PublicSubnetCidrBlock2: 10.165.2.0/24
+PublicSubnetCidrBlock3: 10.165.3.0/24
+PrivateSubnetCidrBlock1: 10.165.4.0/24
+PrivateSubnetCidrBlock2: 10.165.5.0/24
+PrivateSubnetCidrBlock3: 10.165.6.0/24
+Env: testing
