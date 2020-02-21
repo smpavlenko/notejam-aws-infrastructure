@@ -8,9 +8,22 @@ Parameters:
     Description: VPC Cloudformation stack name
     Type: String
 
+  Env:
+    Description: Environment name
+    Type: String
+    AllowedValues:
+      - production
+      - development
+      - testing
+
+Conditions:
+  isTest: !Equals [ !Ref Env, testing ]
+  isNotTest: !Or [ !Equals [!Ref Env, development ], !Equals [!Ref Env, production ]]
+
 Resources:
   ElbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: isNotTest
     Properties:
       GroupDescription: "Security Group for Elastic Load Balancer"
       VpcId:
@@ -25,10 +38,13 @@ Resources:
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: !Sub "elb-sg-${AWS::StackName}"
+          Value: !Sub "elb-${Env}-sg-${AWS::StackName}"
+        - Key: Env
+          Value: !Ref Env
 
   ElbToNodesSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: isNotTest
     Properties:
       GroupDescription: "Security Group for EC2 instances"
       VpcId:
@@ -43,14 +59,14 @@ Resources:
           ToPort: 5000
       Tags:
         - Key: Name
-          Value: !Sub "ec2-sg-${AWS::StackName}"
+          Value: !Sub "ec2-${Env}-sg-${AWS::StackName}"
+        - Key: Env
+          Value: !Ref Env
 
   Elb:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Condition: isNotTest
     Properties:
-      Tags:
-        - Key: Name
-          Value: !Sub "elb-${AWS::StackName}"
       SecurityGroups:
         - !Ref ElbSecurityGroup
       Scheme: internet-facing
@@ -74,8 +90,28 @@ Resources:
       ConnectionDrainingPolicy:
         Enabled: true
         Timeout: 300
+      Tags:
+        - Key: Name
+          Value: !Sub "elb-${Env}-${AWS::StackName}"
+        - Key: Env
+          Value: !Ref Env
 
 Outputs:
   Elb:
-    Description: The ID Elastic Load Balancer.
+    Condition: isNotTest
+    Description: The ID of Elastic Load Balancer.
     Value: !Ref Elb
+
+  ElbSecurityGroup:
+    Condition: isNotTest
+    Description: The ID of ELB Security Group.
+    Value: !Ref ElbSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-elb-${Env}-sg"
+
+  ElbToNodesSecurityGroup:
+    Condition: isNotTest
+    Description: The ID of EC2 Security Group.
+    Value: !Ref ElbToNodesSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-node-${Env}-sg"
