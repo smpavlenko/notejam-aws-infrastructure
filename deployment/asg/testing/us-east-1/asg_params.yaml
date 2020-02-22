@@ -1,1 +1,4 @@
 Env: testing
+MinClusterSize: 1
+MaxClusterSize: 1
+DesiredClusterSize: 1

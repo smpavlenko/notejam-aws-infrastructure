@@ -51,8 +51,9 @@ Parameters:
       - testing
 
 Conditions:
-  isTest: !Equals [ !Ref Env, testing ]
-  isNotTest: !Or [ !Equals [!Ref Env, development ], !Equals [!Ref Env, production ]]
+  isDevEnv: !Equals [ !Ref Env, development ]
+  isProd: !Equals [ !Ref Env, production ]
+  isNotDevEnv: !Or [ !Equals [!Ref Env, testing ], !Equals [!Ref Env, production ]]
 
 Mappings:
   Ubuntu18Ami:
@@ -94,7 +95,7 @@ Resources:
 
   AutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
-    Condition: isNotTest
+    Condition: isNotDevEnv
     CreationPolicy:
       ResourceSignal:
         Count: !Ref DesiredClusterSize
@@ -103,6 +104,8 @@ Resources:
       AutoScalingReplacingUpdate:
         WillReplace: true
     Properties:
+      LoadBalancerNames:
+        - Fn::ImportValue: !Sub "${ElbStackName}-elb-${Env}"
       HealthCheckType: ELB
       HealthCheckGracePeriod: 300
       TerminationPolicies:
@@ -144,7 +147,7 @@ Resources:
 
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
-    Condition: isNotTest
+    Condition: isNotDevEnv
     Properties:
       LaunchTemplateData:
         IamInstanceProfile:
@@ -174,12 +177,12 @@ Resources:
                 - echo 'from notejam import app' >> run.py
                 - echo 'app.run(host="0.0.0.0")' >> run.py
                 - chmod +x run.py
-                - ENVIRONMENT=${Env} python run.py &
+                - ENVIRONMENT=testing python run.py &
                 - /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AutoscalingGroup --region ${AWS::Region}
 
   ScaleOutPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
-    Condition: isNotTest
+    Condition: isProd
     Properties:
       AdjustmentType: ChangeInCapacity
       PolicyType: SimpleScaling
@@ -190,7 +193,7 @@ Resources:
 
   ScaleInPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
-    Condition: isNotTest
+    Condition: isProd
     Properties:
       AdjustmentType: ChangeInCapacity
       PolicyType: SimpleScaling
@@ -201,7 +204,7 @@ Resources:
 
   CpuAlarmHigh:
     Type: AWS::CloudWatch::Alarm
-    Condition: isNotTest
+    Condition: isProd
     Properties:
       AlarmDescription: !Sub "Scale-out if the average CPU >= ${HighCpuThreshold} for ${ScalingPeriod}"
       AlarmActions:
@@ -220,7 +223,7 @@ Resources:
 
   CpuAlarmLow:
     Type: AWS::CloudWatch::Alarm
-    Condition: isNotTest
+    Condition: isProd
     Properties:
       AlarmDescription: !Sub "Scale-in if the average CPU < ${LowCpuThreshold} for ${ScalingPeriod}"
       AlarmActions:
@@ -237,11 +240,91 @@ Resources:
       Threshold: !Ref LowCpuThreshold
       ComparisonOperator: LessThanThreshold
 
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub 'Notejam-metrics-${AWS::Region}-${Env}-${AWS::StackName}'
+      DashboardBody:
+        !Sub
+          - |
+              {
+                  "widgets": [
+                      {
+                          "type": "metric",
+                          "x": 0,
+                          "y": 0,
+                          "width": 12,
+                          "height": 6,
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/ELB", "RequestCount", "LoadBalancerName", "${ELBName}" ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "title": "Request Count",
+                              "period": 300,
+                              "stat": "Sum"
+                          }
+                      },
+                      {
+                          "type": "metric",
+                          "x": 0,
+                          "y": 6,
+                          "width": 12,
+                          "height": 6,
+                          "properties": {
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "metrics": [
+                                  [ "AWS/AutoScaling", "GroupTotalInstances", "AutoScalingGroupName", "${AutoscalingGroup}" ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Total Instances"
+                          }
+                      },
+                      {
+                          "type": "metric",
+                          "x": 12,
+                          "y": 6,
+                          "width": 12,
+                          "height": 6,
+                          "properties": {
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "metrics": [
+                                  [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${AutoscalingGroup}" ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Cluster CPU Utilization"
+                          }
+                      },
+                      {
+                          "type": "metric",
+                          "x": 12,
+                          "y": 0,
+                          "width": 12,
+                          "height": 6,
+                          "properties": {
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "metrics": [
+                                  [ "AWS/ELB", "HealthyHostCount", "LoadBalancerName", "${ELBName}" ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Healthy Host Count"
+                          }
+                      }
+                  ]
+              }
+          - ELBName:
+              Fn::ImportValue: !Sub "${ElbStackName}-elb-${Env}"
+
   TestInstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    Condition: isTest
+    Condition: isDevEnv
     Properties:
-      GroupDescription: "Security Group for single testing instance"
+      GroupDescription: "Security Group for single development instance"
       VpcId:
         Fn::ImportValue: !Sub "${VpcStackName}-vpc"
       SecurityGroupEgress:
@@ -260,7 +343,7 @@ Resources:
 
   Instance:
     Type: AWS::EC2::Instance
-    Condition: isTest
+    Condition: isDevEnv
     Properties:
       ImageId: !FindInMap [ Ubuntu18Ami, !Ref 'AWS::Region', HVM64 ]
       InstanceType: t2.micro
@@ -296,21 +379,21 @@ Resources:
 
 Outputs:
   TestInstance:
-    Condition: isTest
-    Description: The ID of testing instance.
+    Condition: isDevEnv
+    Description: The ID of development instance.
     Value: !Ref Instance
 
   TestInstanceDns:
-    Condition: isTest
-    Description: The Public DNS of testing instance.
+    Condition: isDevEnv
+    Description: The Public DNS of development instance.
     Value: !GetAtt Instance.PublicDnsName
 
   TestInstanceIp:
-    Condition: isTest
-    Description: The Public IP of testing instance.
+    Condition: isDevEnv
+    Description: The Public IP of development instance.
     Value: !GetAtt Instance.PublicIp
 
   AutoscalingGroup:
-    Condition: isNotTest
+    Condition: isNotDevEnv
     Description: Autoscaling group of the cluster.
     Value: !Ref AutoscalingGroup
