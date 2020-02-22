@@ -28,31 +28,13 @@ Parameters:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
 
-  PrivateSubnetCidrBlock1:
-    Description: CIDR block for private Subnet1
-    Type: String
-    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
-    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
-
-  PrivateSubnetCidrBlock2:
-    Description: CIDR block for private Subnet2
-    Type: String
-    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
-    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
-
-  PrivateSubnetCidrBlock3:
-    Description: CIDR block for private Subnet3
-    Type: String
-    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
-    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
-
   Env:
     Description: Environment name
     Type: String
     AllowedValues:
       - production
-      - development
       - testing
+      - development
 
 Resources:
   Vpc:
@@ -158,93 +140,6 @@ Resources:
       SubnetId: !Ref PublicSubnet3
       RouteTableId: !Ref InternetRouteTable
 
-  NatExternalIp:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt [ NatExternalIp, AllocationId ]
-      SubnetId: !Ref PublicSubnet1
-      Tags:
-        - Key: Name
-          Value: !Join [ '-', [ 'nat-gw', !Ref VpcCidr ]]
-        - Key: Env
-          Value: !Ref Env
-
-  NatRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref Vpc
-      Tags:
-        - Key: Name
-          Value: !Join [ '-', [ 'nat-rtl', !Ref VpcCidr ]]
-        - Key: Env
-          Value: !Ref Env
-
-  PrivateInternetRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      DestinationCidrBlock: "0.0.0.0/0"
-      NatGatewayId: !Ref NatGateway
-      RouteTableId: !Ref NatRouteTable
-
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Select ['0', !GetAZs '']
-      CidrBlock: !Ref PrivateSubnetCidrBlock1
-      VpcId: !Ref Vpc
-      Tags:
-        - Key: Name
-          Value: !Join [ '-', [ 'sb', 'private', !Select ['0', !GetAZs ''] ]]
-        - Key: Env
-          Value: !Ref Env
-
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Select ['1', !GetAZs '']
-      CidrBlock: !Ref PrivateSubnetCidrBlock2
-      VpcId: !Ref Vpc
-      Tags:
-        - Key: Name
-          Value: !Join [ '-', [ 'sb', 'private', !Select ['1', !GetAZs ''] ]]
-        - Key: Env
-          Value: !Ref Env
-
-  PrivateSubnet3:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Select ['2', !GetAZs '']
-      CidrBlock: !Ref PrivateSubnetCidrBlock3
-      VpcId: !Ref Vpc
-      Tags:
-        - Key: Name
-          Value: !Join [ '-', [ 'sb', 'private', !Select ['2', !GetAZs ''] ]]
-        - Key: Env
-          Value: !Ref Env
-
-  RouteTableAssociationPrivateSubnet1:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref NatRouteTable
-
-  RouteTableAssociationPrivateSubnet2:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref NatRouteTable
-
-  RouteTableAssociationPrivateSubnet3:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet3
-      RouteTableId: !Ref NatRouteTable
-
 Outputs:
   Vpc:
     Description: VPC ID for this VPC
@@ -259,14 +154,6 @@ Outputs:
   InternetRouteTable:
     Description: Internet route table.
     Value: !Ref InternetRouteTable
-
-  NatGateway:
-    Description: The ID of the nat gateway.
-    Value: !Ref NatGateway
-
-  NatRouteTable:
-    Description: NAT route table.
-    Value: !Ref NatRouteTable
 
   PublicSubnet1:
     Description: Public Subnet1 ID for this VPC
@@ -285,22 +172,3 @@ Outputs:
     Value: !Ref PublicSubnet3
     Export:
       Name: !Sub "${AWS::StackName}-public-subnet3"
-
-  PrivateSubnet1:
-    Description: Private Subnet1 ID for this VPC
-    Value: !Ref PrivateSubnet1
-    Export:
-      Name: !Sub "${AWS::StackName}-private-subnet1"
-
-  PrivateSubnet2:
-    Description: Private Subnet2 ID for this VPC
-    Value: !Ref PrivateSubnet2
-    Export:
-      Name: !Sub "${AWS::StackName}-private-subnet2"
-
-  PrivateSubnet3:
-    Description: Private Subnet3 ID for this VPC
-    Value: !Ref PrivateSubnet3
-    Export:
-      Name: !Sub "${AWS::StackName}-private-subnet3"
-

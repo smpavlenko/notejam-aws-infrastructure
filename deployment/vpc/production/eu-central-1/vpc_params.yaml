@@ -1,8 +1,5 @@
+Env: production
 VpcCidr: 10.163.0.0/16
 PublicSubnetCidrBlock1: 10.163.1.0/24
 PublicSubnetCidrBlock2: 10.163.2.0/24
 PublicSubnetCidrBlock3: 10.163.3.0/24
-PrivateSubnetCidrBlock1: 10.163.4.0/24
-PrivateSubnetCidrBlock2: 10.163.5.0/24
-PrivateSubnetCidrBlock3: 10.163.6.0/24
-Env: production

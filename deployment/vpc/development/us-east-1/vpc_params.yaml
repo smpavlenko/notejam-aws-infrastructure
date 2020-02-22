@@ -1,8 +1,5 @@
+Env: development
 VpcCidr: 10.162.0.0/16
 PublicSubnetCidrBlock1: 10.162.1.0/24
 PublicSubnetCidrBlock2: 10.162.2.0/24
 PublicSubnetCidrBlock3: 10.162.3.0/24
-PrivateSubnetCidrBlock1: 10.162.4.0/24
-PrivateSubnetCidrBlock2: 10.162.5.0/24
-PrivateSubnetCidrBlock3: 10.162.6.0/24
-Env: development
