@@ -1,0 +1,135 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Notejam ASG
+
+Parameters:
+  VpcStackName:
+    Description: VPC Cloudformation stack name
+    Type: String
+
+  ElbStackName:
+    Description: ELB Cloudformation stack name
+    Type: String
+
+  Env:
+    Description: Environment name
+    Type: String
+    AllowedValues:
+      - production
+      - development
+      - testing
+
+Conditions:
+  isTest: !Equals [ !Ref Env, testing ]
+  isNotTest: !Or [ !Equals [!Ref Env, development ], !Equals [!Ref Env, production ]]
+
+Mappings:
+  Ubuntu18Ami:
+    us-east-1:
+      HVM64: ami-07ebfd5b3428b6f4d
+    eu-central-1:
+      HVM64: ami-0b418580298265d5c
+
+Resources:
+  Ec2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "notejam-${AWS::StackName}-${AWS::Region}-ec2-role"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudWatchPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: VisualEditor0
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref Ec2Role
+
+  TestInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: isTest
+    Properties:
+      GroupDescription: "Security Group for single testing instance"
+      VpcId:
+        Fn::ImportValue: !Sub "${VpcStackName}-vpc"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - IpProtocol: TCP
+          FromPort: 5000
+          ToPort: 5000
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "instance-${Env}-sg-${AWS::StackName}"
+        - Key: Env
+          Value: !Ref Env
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Condition: isTest
+    Properties:
+      ImageId: !FindInMap [ Ubuntu18Ami, !Ref 'AWS::Region', HVM64 ]
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          SubnetId:
+            Fn::ImportValue: !Sub "${VpcStackName}-public-subnet1"
+          GroupSet:
+            - !Ref TestInstanceSecurityGroup
+          DeviceIndex: 0
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ 'ec2', !FindInMap [Ubuntu18Ami, !Ref 'AWS::Region', HVM64] ]]
+      UserData:
+        Fn::Base64:
+          !Sub |
+          #cloud-config
+          preserve_hostname: true
+          manage_etc_hosts: false
+          runcmd:
+            - sudo apt update
+            - sudo apt -y install python-pip
+            - sudo pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+            - git clone https://github.com/komarserjio/notejam /home/ubuntu/notejam
+            - cd /home/ubuntu/notejam/flask
+            - pip install -r requirements.txt
+            - echo 'from notejam import app' >> run.py
+            - echo 'app.run(host="0.0.0.0")' >> run.py
+            - chmod +x run.py
+            - python run.py
+
+Outputs:
+  TestInstance:
+    Condition: isTest
+    Description: The ID of testing instance.
+    Value: !Ref Instance
+
+  TestInstanceDns:
+    Condition: isTest
+    Description: The Public DNS of testing instance.
+    Value: !GetAtt Instance.PublicDnsName
+
+  TestInstanceIp:
+    Condition: isTest
+    Description: The Public IP of testing instance.
+    Value: !GetAtt Instance.PublicIp
