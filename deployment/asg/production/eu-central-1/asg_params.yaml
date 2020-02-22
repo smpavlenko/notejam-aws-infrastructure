@@ -1,0 +1,7 @@
+Env: production
+HighCpuThreshold: 80
+LowCpuThreshold: 50
+ScalingPeriod: 600
+MinClusterSize: 3
+MaxClusterSize: 100
+DesiredClusterSize: 4

@@ -1,0 +1,7 @@
+Env: development
+HighCpuThreshold: 80
+LowCpuThreshold: 50
+ScalingPeriod: 300
+MinClusterSize: 1
+MaxClusterSize: 2
+DesiredClusterSize: 1
