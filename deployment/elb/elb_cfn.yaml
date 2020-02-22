@@ -79,9 +79,9 @@ Resources:
           InstancePort: '5000'
           Protocol: HTTP
       HealthCheck:
-        Target: "HTTP:5000/"
-        HealthyThreshold: '2'
-        UnhealthyThreshold: '2'
+        Target: "HTTP:5000/signin/"
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '3'
         Interval: '10'
         Timeout: '5'
       CrossZone: true

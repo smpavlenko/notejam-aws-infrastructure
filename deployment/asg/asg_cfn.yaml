@@ -62,6 +62,87 @@ Resources:
       Roles:
         - !Ref Ec2Role
 
+  AutoscalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Condition: isNotTest
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT10M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: true
+    Properties:
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      TerminationPolicies:
+        - OldestLaunchConfiguration
+        - OldestInstance
+        - Default
+      VPCZoneIdentifier:
+        - Fn::ImportValue: !Sub "${VpcStackName}-public-subnet1"
+        - Fn::ImportValue: !Sub "${VpcStackName}-public-subnet2"
+        - Fn::ImportValue: !Sub "${VpcStackName}-public-subnet3"
+      MixedInstancesPolicy:
+        InstancesDistribution:
+          OnDemandBaseCapacity: 0
+          OnDemandPercentageAboveBaseCapacity: 100
+        LaunchTemplate:
+          LaunchTemplateSpecification:
+            LaunchTemplateId: !Ref LaunchTemplate
+            Version: !GetAtt LaunchTemplate.LatestVersionNumber
+          Overrides:
+            - InstanceType: t2.micro
+      MinSize: 1
+      MaxSize: 1
+      DesiredCapacity: 1
+      MetricsCollection:
+        - Granularity: 1Minute
+          Metrics:
+            - GroupMaxSize
+            - GroupTerminatingInstances
+            - GroupStandbyInstances
+            - GroupTotalInstances
+            - GroupPendingInstances
+            - GroupDesiredCapacity
+            - GroupMinSize
+            - GroupInServiceInstances
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Condition: isNotTest
+    Properties:
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Name: !Ref Ec2InstanceProfile
+        ImageId: !FindInMap [ Ubuntu18Ami, !Ref 'AWS::Region', HVM64 ]
+        InstanceInitiatedShutdownBehavior: terminate
+        Monitoring:
+          Enabled: true
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            DeviceIndex: 0
+            Groups:
+              - Fn::ImportValue: !Sub "${ElbStackName}-node-${Env}-sg"
+        UserData:
+          Fn::Base64:
+            Fn::Sub: |
+              #cloud-config
+              preserve_hostname: true
+              manage_etc_hosts: false
+              runcmd:
+                - sudo apt update
+                - sudo apt -y install python-pip
+                - sudo pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+                - git clone https://github.com/komarserjio/notejam /home/ubuntu/notejam
+                - cd /home/ubuntu/notejam/flask
+                - pip install -r requirements.txt
+                - echo 'from notejam import app' >> run.py
+                - echo 'app.run(host="0.0.0.0")' >> run.py
+                - chmod +x run.py
+                - ENVIRONMENT=${Env} python run.py &
+                - /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AutoscalingGroup --region ${AWS::Region}
+
   TestInstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Condition: isTest
@@ -100,6 +181,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Join [ '-', [ 'ec2', !FindInMap [Ubuntu18Ami, !Ref 'AWS::Region', HVM64] ]]
+        - Key: Env
+          Value: !Ref Env
       UserData:
         Fn::Base64:
           !Sub |
@@ -109,14 +192,13 @@ Resources:
           runcmd:
             - sudo apt update
             - sudo apt -y install python-pip
-            - sudo pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
             - git clone https://github.com/komarserjio/notejam /home/ubuntu/notejam
             - cd /home/ubuntu/notejam/flask
             - pip install -r requirements.txt
             - echo 'from notejam import app' >> run.py
             - echo 'app.run(host="0.0.0.0")' >> run.py
             - chmod +x run.py
-            - python run.py
+            - ENVIRONMENT=${Env} python run.py
 
 Outputs:
   TestInstance:
