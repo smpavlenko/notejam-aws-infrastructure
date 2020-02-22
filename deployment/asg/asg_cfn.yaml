@@ -12,6 +12,36 @@ Parameters:
     Description: ELB Cloudformation stack name
     Type: String
 
+  HighCpuThreshold:
+    Description: CPU Threschold to add addition nodes in cluster
+    Type: Number
+    Default: 0
+
+  MinClusterSize:
+    Description: Min number of EC2 instances in cluster
+    Type: Number
+    Default: 0
+
+  MaxClusterSize:
+    Description: Max number of EC2 instances in cluster
+    Type: Number
+    Default: 0
+
+  DesiredClusterSize:
+    Description: Desired number of EC2 instances in cluster
+    Type: Number
+    Default: 0
+
+  LowCpuThreshold:
+    Description: CPU Threschold to remove addition nodes in cluster
+    Type: Number
+    Default: 0
+
+  ScalingPeriod:
+    Description: Period of Time to calculate scaling average on (multiples of 60)
+    Type: Number
+    Default: 600
+
   Env:
     Description: Environment name
     Type: String
@@ -67,7 +97,7 @@ Resources:
     Condition: isNotTest
     CreationPolicy:
       ResourceSignal:
-        Count: 1
+        Count: !Ref DesiredClusterSize
         Timeout: PT10M
     UpdatePolicy:
       AutoScalingReplacingUpdate:
@@ -93,9 +123,9 @@ Resources:
             Version: !GetAtt LaunchTemplate.LatestVersionNumber
           Overrides:
             - InstanceType: t2.micro
-      MinSize: 1
-      MaxSize: 1
-      DesiredCapacity: 1
+      MinSize: !Ref MinClusterSize
+      MaxSize: !Ref MaxClusterSize
+      DesiredCapacity: !Ref DesiredClusterSize
       MetricsCollection:
         - Granularity: 1Minute
           Metrics:
@@ -107,6 +137,10 @@ Resources:
             - GroupDesiredCapacity
             - GroupMinSize
             - GroupInServiceInstances
+      Tags:
+        - Key: Env
+          Value: !Ref Env
+          PropagateAtLaunch: true
 
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
@@ -142,6 +176,66 @@ Resources:
                 - chmod +x run.py
                 - ENVIRONMENT=${Env} python run.py &
                 - /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AutoscalingGroup --region ${AWS::Region}
+
+  ScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Condition: isNotTest
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      PolicyType: SimpleScaling
+      Cooldown: '300'
+      AutoScalingGroupName:
+        Ref: AutoscalingGroup
+      ScalingAdjustment: 2
+
+  ScaleInPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Condition: isNotTest
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      PolicyType: SimpleScaling
+      Cooldown: '300'
+      AutoScalingGroupName:
+        Ref: AutoscalingGroup
+      ScalingAdjustment: -1
+
+  CpuAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Condition: isNotTest
+    Properties:
+      AlarmDescription: !Sub "Scale-out if the average CPU >= ${HighCpuThreshold} for ${ScalingPeriod}"
+      AlarmActions:
+        - Ref: ScaleOutPolicy
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value:
+            Ref: AutoscalingGroup
+      Statistic: Average
+      Period: !Ref ScalingPeriod
+      EvaluationPeriods: 1
+      Threshold: !Ref HighCpuThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+
+  CpuAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Condition: isNotTest
+    Properties:
+      AlarmDescription: !Sub "Scale-in if the average CPU < ${LowCpuThreshold} for ${ScalingPeriod}"
+      AlarmActions:
+        - Ref: ScaleInPolicy
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value:
+            Ref: AutoscalingGroup
+      Statistic: Average
+      Period: !Ref ScalingPeriod
+      EvaluationPeriods: 1
+      Threshold: !Ref LowCpuThreshold
+      ComparisonOperator: LessThanThreshold
 
   TestInstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -215,3 +309,8 @@ Outputs:
     Condition: isTest
     Description: The Public IP of testing instance.
     Value: !GetAtt Instance.PublicIp
+
+  AutoscalingGroup:
+    Condition: isNotTest
+    Description: Autoscaling group of the cluster.
+    Value: !Ref AutoscalingGroup
