@@ -17,13 +17,13 @@ Parameters:
       - testing
 
 Conditions:
-  isTest: !Equals [ !Ref Env, testing ]
-  isNotTest: !Or [ !Equals [!Ref Env, development ], !Equals [!Ref Env, production ]]
+  isDevEnv: !Equals [ !Ref Env, development ]
+  isNotDevEnv: !Or [ !Equals [!Ref Env, testing ], !Equals [!Ref Env, production ]]
 
 Resources:
   ElbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    Condition: isNotTest
+    Condition: isNotDevEnv
     Properties:
       GroupDescription: "Security Group for Elastic Load Balancer"
       VpcId:
@@ -44,7 +44,7 @@ Resources:
 
   ElbToNodesSecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    Condition: isNotTest
+    Condition: isNotDevEnv
     Properties:
       GroupDescription: "Security Group for EC2 instances"
       VpcId:
@@ -65,7 +65,7 @@ Resources:
 
   Elb:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
-    Condition: isNotTest
+    Condition: isNotDevEnv
     Properties:
       SecurityGroups:
         - !Ref ElbSecurityGroup
@@ -98,19 +98,21 @@ Resources:
 
 Outputs:
   Elb:
-    Condition: isNotTest
+    Condition: isNotDevEnv
     Description: The ID of Elastic Load Balancer.
     Value: !Ref Elb
+    Export:
+      Name: !Sub "${AWS::StackName}-elb-${Env}"
 
   ElbSecurityGroup:
-    Condition: isNotTest
+    Condition: isNotDevEnv
     Description: The ID of ELB Security Group.
     Value: !Ref ElbSecurityGroup
     Export:
       Name: !Sub "${AWS::StackName}-elb-${Env}-sg"
 
   ElbToNodesSecurityGroup:
-    Condition: isNotTest
+    Condition: isNotDevEnv
     Description: The ID of EC2 Security Group.
     Value: !Ref ElbToNodesSecurityGroup
     Export:
