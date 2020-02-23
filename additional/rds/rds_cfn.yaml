@@ -90,13 +90,13 @@ Resources:
         - Key: Env
           Value: !Ref Env
 
-  MySqlDb:
+  MasterDb:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Snapshot
     Properties:
       DBInstanceIdentifier: !Ref DbInstanceId
       DBName: !Ref DbName
-      DBSecurityGroups:
+      VPCSecurityGroups:
         - !Ref DbSecurityGroup
       AllocatedStorage: !Ref DbAllocatedStorage
       DBInstanceClass: !Ref DbInstanceClass
@@ -105,19 +105,27 @@ Resources:
       MasterUsername: !Ref DbUsername
       MasterUserPassword: !Ref DbPassword
       Tags:
+        - Key: Name
+          Value: Master Database
+        - Key: Env
+          Value: !Ref Env
+
+  ReplicaDb:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      SourceDBInstanceIdentifier: !Ref MasterDb
+      DBInstanceClass: !Ref DbInstanceClass
+      Tags:
+        - Key: Name
+          Value: Read Replica Database
         - Key: Env
           Value: !Ref Env
 
 Outputs:
-  MySqlDb:
-    Description: The ID of MySql RDS.
-    Value: !Ref MySqlDb
+  MasterJDBCConnectionString:
+    Description: JDBC connection string for the master database
+    Value: !Join ['', ['jdbc:mysql://', !GetAtt [MasterDb, Endpoint.Address], ':', !GetAtt [MasterDb, Endpoint.Port], /, !Ref DbName]]
 
-  MySqlDbAddress:
-    Description: The address of MySql RDS inatance.
-    Value: !GetAtt [ MySqlDb, Endpoint.Address ]
-
-  MySqlDbPort:
-    Description: The port of MySql RDS inatance.
-    Value: !GetAtt [ MySqlDb, Endpoint.Port ]
-
+  ReplicaJDBCConnectionString:
+    Description: JDBC connection string for the replica database
+    Value: !Join ['', ['jdbc:mysql://', !GetAtt [ReplicaDb, Endpoint.Address], ':', !GetAtt [ReplicaDb, Endpoint.Port], /, !Ref DbName]]

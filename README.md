@@ -45,6 +45,8 @@ There are three possible environment configurations - development, testing, prod
 - Production environment in addition has two scaling policies based on CPU Cloudwatch alarms
 - Production environment must have existing deployed MySql database
 
+CloudFormation templates for MVP can be found in [deployment](/deployment) folder
+
 ## Minimum viable development environment
 Estimated costs using free tier `t2.micro` instance ~= 0$
 
@@ -130,6 +132,8 @@ Estimated costs for `eu-central-1` per deployment per month ~= 236$ in total
     - In case of potential disaster Database fails over to stand by replica
     - In case of entire region disaster - incoming traffic could be shifted to another region using Route53 Failover Routing Policy
     
+Some templates for improvements can be found in [additional](/additional) folder
+
 Result: Total estimated costs for `eu-central-1` for improved one region cluster per month ~= 980$ in total
 
 ![](img/improved.png)
