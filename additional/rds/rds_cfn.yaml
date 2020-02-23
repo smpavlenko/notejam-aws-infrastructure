@@ -1,0 +1,123 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Notejam MySql RDS
+
+Parameters:
+  VpcStackName:
+    Description: VPC Cloudformation stack name
+    Type: String
+
+  ElbStackName:
+    Description: ELB Cloudformation stack name
+    Type: String
+
+  Env:
+    Description: Environment name
+    Type: String
+    AllowedValues:
+      - production
+      - testing
+
+  DbInstanceId:
+    Default: notejamdbinstance
+    Description: My database instance
+    Type: String
+    MinLength: '1'
+    MaxLength: '63'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: >-
+      Must begin with a letter and must not end with a hyphen or contain two
+      consecutive hyphens.
+
+  DbName:
+    Default: notejamdb
+    Description: My database
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+
+  DbInstanceClass:
+    Default: db.m5.large
+    Description: DB instance class
+    Type: String
+    ConstraintDescription: Must select a valid DB instance type.
+
+  DbAllocatedStorage:
+    Default: 550
+    Description: The size of the database (GiB)
+    Type: Number
+    ConstraintDescription: must be between 20 and 65536 GiB.
+
+  DbUsername:
+    NoEcho: 'true'
+    Description: Username for MySQL database access
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DbPassword:
+    NoEcho: 'true'
+    Description: Password MySQL database access
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+
+Resources:
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security Group for database"
+      VpcId:
+        Fn::ImportValue: !Sub "${VpcStackName}-vpc"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - SourceSecurityGroupId:
+            Fn::ImportValue: !Sub "${ElbStackName}-node-${Env}-sg"
+          IpProtocol: TCP
+          FromPort: 3306
+          ToPort: 3306
+      Tags:
+        - Key: Name
+          Value: !Sub "database-${Env}-sg-${AWS::StackName}"
+        - Key: Env
+          Value: !Ref Env
+
+  MySqlDb:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Ref DbInstanceId
+      DBName: !Ref DbName
+      DBSecurityGroups:
+        - !Ref DbSecurityGroup
+      AllocatedStorage: !Ref DbAllocatedStorage
+      DBInstanceClass: !Ref DbInstanceClass
+      Engine: MySQL
+      MultiAZ: true
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      Tags:
+        - Key: Env
+          Value: !Ref Env
+
+Outputs:
+  MySqlDb:
+    Description: The ID of MySql RDS.
+    Value: !Ref MySqlDb
+
+  MySqlDbAddress:
+    Description: The address of MySql RDS inatance.
+    Value: !GetAtt [ MySqlDb, Endpoint.Address ]
+
+  MySqlDbPort:
+    Description: The port of MySql RDS inatance.
+    Value: !GetAtt [ MySqlDb, Endpoint.Port ]
+
