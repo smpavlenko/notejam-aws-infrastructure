@@ -1,4 +1,5 @@
 Env: testing
+InstanceType: t3.micro
 MinClusterSize: 1
 MaxClusterSize: 1
 DesiredClusterSize: 1

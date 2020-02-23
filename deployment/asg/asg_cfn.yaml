@@ -12,6 +12,12 @@ Parameters:
     Description: ELB Cloudformation stack name
     Type: String
 
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: Must be a valid EC2 instance type.
+
   HighCpuThreshold:
     Description: CPU Threschold to add addition nodes in cluster
     Type: Number
@@ -125,7 +131,7 @@ Resources:
             LaunchTemplateId: !Ref LaunchTemplate
             Version: !GetAtt LaunchTemplate.LatestVersionNumber
           Overrides:
-            - InstanceType: t2.micro
+            - InstanceType: !Ref InstanceType
       MinSize: !Ref MinClusterSize
       MaxSize: !Ref MaxClusterSize
       DesiredCapacity: !Ref DesiredClusterSize
@@ -242,6 +248,7 @@ Resources:
 
   CloudWatchDashboard:
     Type: AWS::CloudWatch::Dashboard
+    Condition: isNotDevEnv
     Properties:
       DashboardName: !Sub 'Notejam-metrics-${AWS::Region}-${Env}-${AWS::StackName}'
       DashboardBody:
@@ -346,7 +353,7 @@ Resources:
     Condition: isDevEnv
     Properties:
       ImageId: !FindInMap [ Ubuntu18Ami, !Ref 'AWS::Region', HVM64 ]
-      InstanceType: t2.micro
+      InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref Ec2InstanceProfile
       NetworkInterfaces:
         - AssociatePublicIpAddress: true

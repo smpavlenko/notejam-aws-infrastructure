@@ -1,4 +1,5 @@
 Env: production
+InstanceType: c5.large
 HighCpuThreshold: 80
 LowCpuThreshold: 50
 ScalingPeriod: 600
