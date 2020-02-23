@@ -1,0 +1,21 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Notejam Cloudwatch Log Group
+
+Parameters:
+  RetentionPeriod:
+    Description: Cloudwatch Logs retention period
+    Type: Number
+    Default: 90
+
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: '/notejam/log'
+      RetentionInDays: !Ref RetentionPeriod
+
+Outputs:
+  LogGroup:
+    Value: !Ref LogGroup

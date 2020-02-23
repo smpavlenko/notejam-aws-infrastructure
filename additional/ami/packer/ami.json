@@ -1,0 +1,71 @@
+{
+  "variables": {
+    "base_ami": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server*",
+    "region" : "eu-central-1",
+    "instance_type": "t2.micro",
+    "env": "production"
+  },
+  "builders": [
+    {
+      "name": "ami",
+      "type": "amazon-ebs",
+      "ami_name": "AMI_Ubuntu_18_{{user `env`}}_{{isotime \"2006-01-02-030405\"}}",
+      "source_ami_filter": {
+        "filters": {
+          "name": "{{user `base_ami`}}"
+        },
+        "owners": "099720109477",
+        "most_recent": true
+      },
+      "access_key": "{{user `aws_access_key`}}",
+      "secret_key": "{{user `aws_secret_key`}}",
+      "region": "{{user `region`}}",
+      "vpc_id": "{{user `vpc`}}",
+      "subnet_id": "{{user `subnet_id`}}",
+      "security_group_ids": "{{user `security_group`}}",
+      "instance_type": "{{user `instance_type`}}",
+      "associate_public_ip_address": true,
+      "ssh_username": "ubuntu",
+      "ssh_interface": "public_ip",
+      "ami_regions": [
+        "{{user `region`}}"
+      ],
+      "run_tags": {
+        "Name": "AMI",
+        "Env": "{{user `env`}}",
+        "SourceAMI": "{{.SourceAMI}}"
+      },
+      "tags": {
+        "Name": "AMI",
+        "Env": "{{user `env`}}",
+        "SourceAMI": "{{.SourceAMI}}"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt update",
+        "sudo apt-get update",
+        "sudo apt-get -y install software-properties-common",
+        "sudo apt-add-repository -y ppa:ansible/ansible",
+        "sudo apt-get update",
+        "sudo apt-get -y install ansible"
+      ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "ansible/playbook.yml",
+      "role_paths": [
+        "ansible/roles/bootstrap",
+        "ansible/roles/notejam"
+      ]
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "manifest"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+- name: Install Notejam
+  become: yes
+  apt: name={{item}} state=latest update_cache=yes force=yes
+  with_items:
+    - python-pip
+
+- name: Download Notejam
+  git:
+    repo: https://github.com/komarserjio/notejam
+    dest: /home/ubuntu/notejam
+
+- name: Install dependencies
+  pip:
+    requirements: /home/ubuntu/notejam/flask/requirements.txt
+
+- name: Create run file with content
+  copy:
+    dest: /home/ubuntu/notejam/flask/run.py
+    mode: 0777
+    content: |
+      from notejam import app
+      app.run(host="0.0.0.0")

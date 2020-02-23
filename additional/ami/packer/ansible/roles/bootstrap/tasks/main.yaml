@@ -1,0 +1,8 @@
+- name: Install applications
+  apt: name={{item}} state=latest update_cache=yes force=yes
+  with_items:
+    - python-pip
+
+- name: Install cfn bootstrap
+  pip:
+    name: https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
