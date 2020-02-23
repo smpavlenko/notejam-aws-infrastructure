@@ -21,7 +21,7 @@ Parameters:
 
   DbInstanceId:
     Default: notejamdbinstance
-    Description: My database instance
+    Description: Database instance id
     Type: String
     MinLength: '1'
     MaxLength: '63'
@@ -32,7 +32,7 @@ Parameters:
 
   DbName:
     Default: notejamdb
-    Description: My database
+    Description: Database name
     Type: String
     MinLength: '1'
     MaxLength: '64'

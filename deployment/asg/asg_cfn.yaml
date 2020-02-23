@@ -183,7 +183,7 @@ Resources:
                 - echo 'from notejam import app' >> run.py
                 - echo 'app.run(host="0.0.0.0")' >> run.py
                 - chmod +x run.py
-                - ENVIRONMENT=testing python run.py &
+                - ENVIRONMENT=${Env} python run.py &
                 - /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AutoscalingGroup --region ${AWS::Region}
 
   ScaleOutPolicy:

@@ -1,0 +1,41 @@
+#!groovy​
+
+//noinspection GroovyAssignabilityCheck
+pipeline {
+
+    parameters {
+        string(name: 'ENV', choices: "development\ntesting\nproduction", description: '* deployment environment')
+        string(name: 'STACK_NAME', defaultValue: '', description: '* Cloudformation stack name id', trim: true)
+        choice(name: 'REGION', choices: "us-east-1\neu-central-1", description: '* be sure that region is configured')
+        choice(name: 'TEST_ROLE', defaultValue: '', description: '* IAM role to deploy Cloudformation stack', trim: true)
+        choice(name: 'TEST_ACCOUNT', defaultValue: '', description: '* AWS account to provision instance', trim: true)
+    }
+
+    stages {
+        stage('Clean working directory and Checkout') {
+            steps {
+                deleteDir()
+                checkout scm
+            }
+        }
+
+        stage('Set parameters') {
+            steps {
+                script {
+                    env.TEMPLATE_PATH = "deployment/vpc/vpc_cfn.yaml"
+                    env.PARAMS_PATH = "deployment/vpc/${ENV}/${REGION}/vpc_params.yaml"
+                }
+            }
+        }
+
+        stage('Deploy VPC') {
+            steps {
+                //noinspection GroovyAssignabilityCheck
+                withAWS(role: "${TEST_ROLE}", roleAccount: "${TEST_ACCOUNT}", region: "${REGION}") {
+                    cfnValidate(file: "${TEMPLATE_PATH}")
+                    cfnUpdate(stack: "${STACK_NAME}", file: "${TEMPLATE_PATH}", paramsFile: "${PARAMS_PATH}", roleArn: "${TEST_ROLE}", tags: [ "Env=${ENV}" ], pollInterval: 6000, timeoutInMinutes: 20)
+                }
+            }
+        }
+    }
+}

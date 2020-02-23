@@ -1,23 +1,23 @@
 # Notejam AWS infrastructure
 
-This repository contains an example of infrastructure for on-premise application which is going to be deployed in AWS public cloud.
+This repository contains an example of infrastructure for on-premise application which is going to be deployed in AWS public cloud
 The application itself can be found in the git repo [notejam](https://github.com/nordcloud/notejam)
 
 ## Business Requirements
-- The Application must serve variable amount of traffic. Most users are active during business hours. During big events and conferences the traffic could be 4 times more than typical.
-- The Customer takes guarantee to preserve your notes up to 3 years and recover it if needed.
-- The Customer ensures continuity in service in case of data center failures.
-- The Service must be capable of being migrated to any regions supported by the cloud provider in case of emergency.
-- The Customer is planning to have more than 100 developers to work in this project who want to roll out multiple deployments a day without interruption / downtime.
-- The Customer wants to provision separated environments to support their development process for development, testing, production in the near future.
-- The Customer wants to see relevant metrics and logs from the infrastructure for quality assurance and security purposes.
+- The Application must serve variable amount of traffic. Most users are active during business hours. During big events and conferences the traffic could be 4 times more than typical
+- The Customer takes guarantee to preserve your notes up to 3 years and recover it if needed
+- The Customer ensures continuity in service in case of data center failures
+- The Service must be capable of being migrated to any regions supported by the cloud provider in case of emergency
+- The Customer is planning to have more than 100 developers to work in this project who want to roll out multiple deployments a day without interruption / downtime
+- The Customer wants to provision separated environments to support their development process for development, testing, production in the near future
+- The Customer wants to see relevant metrics and logs from the infrastructure for quality assurance and security purposes
 
 ## Assumptions
-- Let’s assume we have 10M total users, with 1M daily active users.
-- Let's assume 10:1 ratio between read and write.
-- Let's assume 10M daily read requests with 1M daily write requests.
-- Let's assume 10:1 ratio between Notes and Pads.
-- Let's assume 10 Pads and 50 Notes per user.
+- Let’s assume we have 10M total users, with 1M daily active users
+- Let's assume 10:1 ratio between read and write
+- Let's assume 10M daily read requests with 1M daily write requests
+- Let's assume 10:1 ratio between Notes and Pads
+- Let's assume 10 Pads and 50 Notes per user
 
 #### Traffic estimates
 - 10M / (24 hours * 3600 seconds) ~= 120 reads/sec
@@ -38,8 +38,8 @@ The application itself can be found in the git repo [notejam](https://github.com
 - (2B + 120B + 1KB) * 12 writes ~= 14 KB/s for write requests
 
 ## Minimum viable product
-There are three possible environment configurations - development, testing, production.
-- All configurations include VPC, three public subnets, internet gateway 
+There are three possible environment configurations - development, testing, production
+- All configurations include VPC, three public subnets, internet gateway. All EC2 instances are provisioned from standard `Ubuntu Server 18.04 LTS (HVM), SSD Volume Type` AMIs 
 - Development environment includes security group with opened port 5000 and single instance 
 - Testing and production environments include classic load balancer, two security groups, autoscalig group and launch configuration
 - Production environment in addition has two scaling policies based on CPU Cloudwatch alarms
@@ -67,13 +67,15 @@ Estimated costs for `eu-central-1` per deployment per month ~= 236$ in total
 
 ![](img/production.png)
 
-##Further Improvements
+## Further Improvements
 1. Database
     - If new database is needed, it can be provisioned using MySql or Aurora RDS instances
     - For high availability and reliability the MultiAZ configuration with one read replica can be used
     - For backups automatic snapshots once a day with 1 month retention period can be used
-    - Estimated costs for `eu-central-1` MySql cluster ~= 201$ per month
+    - Estimated costs for `eu-central-1` MySql cluster ~= 301$ per month
         - Multi-AZ Partial Upfront Reserved `db.m5.large` instance ~= 50$ per month
+        - Multi-AZ standby instance ~= 50$ per month
+        - Replica instance ~= 50$ per month
         - Multi-AZ General Purpose (SSD) Storage for 544GB ~= 150$ per month
         - Data Transfer for 12GB data ~= 0.23$ per month
         - There is no additional charge for backup storage for a region
@@ -128,6 +130,6 @@ Estimated costs for `eu-central-1` per deployment per month ~= 236$ in total
     - In case of potential disaster Database fails over to stand by replica
     - In case of entire region disaster - incoming traffic could be shifted to another region using Route53 Failover Routing Policy
     
-Result: Total estimated costs for `eu-central-1` for improved one region cluster per month ~= 880$ in total
+Result: Total estimated costs for `eu-central-1` for improved one region cluster per month ~= 980$ in total
 
 ![](img/improved.png)
