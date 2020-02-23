@@ -23,7 +23,7 @@ The application itself can be found in the git repo [notejam](https://github.com
 - 10M / (24 hours * 3600 seconds) ~= 120 reads/sec
 - 1M / (24 hours * 3600 seconds) ~= 12 writes/sec
 
-#### DataBase Storage estimates
+#### DataBase storage estimates
 - Let’s assume we have three database tables User, Pad, Note with fields
   - User table: ID 2B, Email 120B, Password 100B
   - Pad table: ID 2B, Name 100B
@@ -39,7 +39,26 @@ The application itself can be found in the git repo [notejam](https://github.com
 
 ## Minimum viable product
 There are three possible environment configurations - development, testing, production.
-- All of the configurations include VPC, three public subnets, internet gateway 
+- All configurations include VPC, three public subnets, internet gateway 
 - Development environment includes security group with opened port 5000 and single instance 
-- Testing and production environments include Classic Load Balancer, two security groups, Autoscalig group and Scaling Policies based on CPU Cloudwatch Alarms
-- Production environment must have provided deployed MySql DataBase 
+- Testing and production environments include classic load balancer, two security groups, autoscalig group and launch configuration
+- Production environment in addition has two scaling policies based on CPU Cloudwatch alarms
+- Production environment must have existing deployed MySql database
+
+## Minimum viable development environment
+Estimated costs using free tier `t2.micro` instance ~= 0$
+![](img/development.png)
+
+## Minimum viable testing environment
+Estimated costs per `eu-central-1` deployment per month ~= 7$ in total
+- Spot EC2 `t3.micro` ~= 4$
+- CloudWatch Dashboard ~= 3$
+![](img/testing.png)
+
+## Minimum viable production environment
+Estimated costs per `eu-central-1` deployment per month ~= 214$ in total
+- On-Demand EC2 `c5.large` *3x ~= 210$
+- CloudWatch Dashboard ~= 3$
+- CloudWatch Alarms ~= 0.20$
+![](img/production.png)
+
