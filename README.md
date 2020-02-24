@@ -92,7 +92,7 @@ Estimated costs for `eu-central-1` per deployment per month ~= 236$ in total
         - Partial Upfront Reserved `cache.m5.large` instance ~= 43$ per month
         - Data Transfer for 12GB data ~= 0.12$ per month
 3. Auto scaling group and EC2 instances
-    - For high availability at least one instance per AZ must be used
+    - For high availability and reliability at least one instance per AZ must be used
     - For reducing costs one asg with 3 reserved instances and one asg with spot instances can be used
     - For fast instance provisioning and startup pre-baked AMIs using [packer](https://packer.io/) and [ansible](https://www.ansible.com/) could be used
     - Estimated costs for `eu-central-1` ~= 370$ per month
