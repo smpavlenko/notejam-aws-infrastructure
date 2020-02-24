@@ -38,10 +38,13 @@ The application itself can be found in the git repo [notejam](https://github.com
 - (2B + 120B + 1KB) * 12 writes ~= 14 KB/s for write requests
 
 ## Minimum viable product
-There are three possible environment configurations - development, testing, production
-- All configurations include VPC, three public subnets, internet gateway. All EC2 instances are provisioned from standard `Ubuntu Server 18.04 LTS (HVM), SSD Volume Type` AMIs 
+There are three possible environment configurations - development, testing, production.
+All configurations include VPC, three public subnets, internet gateway.
+There are Cloudformation templates for VPC, ELB, ASG and Jenkinsfiles to create Cloudformation stacks using [Jenkins](https://jenkins.io/).
+All EC2 instances are provisioned from standard `Ubuntu Server 18.04 LTS (HVM), SSD Volume Type` AMIs. 
 - Development environment includes security group with opened port 5000 and single instance 
 - Testing and production environments include classic load balancer, two security groups, autoscalig group and launch configuration
+- Testing environment provisions only one EC2 instance without scaling
 - Production environment in addition has two scaling policies based on CPU Cloudwatch alarms
 - Production environment must have existing deployed MySql database
 
@@ -90,7 +93,7 @@ Estimated costs for `eu-central-1` per deployment per month ~= 236$ in total
 3. Auto scaling group and EC2 instances
     - For high availability at least one instance per AZ must be used
     - For reducing costs one asg with 3 reserved instances and one asg with spot instances can be used
-    - For fast instance provisioning and startup pre-baked AMIs could be used
+    - For fast instance provisioning and startup pre-baked AMIs using [packer](https://packer.io/) and [ansible](https://www.ansible.com/) could be used
     - Estimated costs for `eu-central-1` ~= 370$ per month
         - Reserved EC2 `c5.xlarge` *3x ~= 210$ per month
         - Spot EC2 `c5.xlarge` *3x ~= 160$ per month
