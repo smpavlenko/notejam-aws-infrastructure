@@ -7,6 +7,7 @@ pipeline {
         string(name: 'ENV', choices: "development\ntesting\nproduction", description: '* deployment environment')
         string(name: 'VPC_STACK', defaultValue: '', description: '* VPC Cloudformation stack name', trim: true)
         string(name: 'ELB_STACK', defaultValue: '', description: '* ELB Cloudformation stack name', trim: true)
+        string(name: 'SQLALCHEMY_DATABASE_URI', defaultValue: '', description: '* External Database URI', trim: true)
         string(name: 'STACK_NAME', defaultValue: '', description: '* Cloudformation stack name id', trim: true)
         choice(name: 'REGION', choices: "us-east-1\neu-central-1", description: '* be sure that region is configured')
         choice(name: 'TEST_ROLE', defaultValue: '', description: '* IAM role to deploy Cloudformation stack', trim: true)
@@ -28,6 +29,7 @@ pipeline {
                     env.PARAMS_PATH = "deployment/asg/${ENV}/${REGION}/asg_params.yaml"
                     sh "echo 'VpcStackName=${VPC_STACK}' >> ${PARAMS_PATH}"
                     sh "echo 'ElbStackName=${ELB_STACK}' >> ${PARAMS_PATH}"
+                    sh "echo 'DatabaseUri=${SQLALCHEMY_DATABASE_URI}' >> ${PARAMS_PATH}"
                 }
             }
         }

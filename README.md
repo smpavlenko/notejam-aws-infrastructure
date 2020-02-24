@@ -38,6 +38,7 @@ The application itself can be found in the git repo [notejam](https://github.com
 - (2B + 120B + 1KB) * 12 writes ~= 14 KB/s for write requests
 
 ## Minimum viable product
+The application is starting using Python implementation on Flask framework. 
 There are three possible environment configurations - development, testing, production.
 All configurations include VPC, three public subnets, internet gateway.
 There are Cloudformation templates for VPC, ELB, ASG and Jenkinsfiles to create Cloudformation stacks using [Jenkins](https://jenkins.io/).
